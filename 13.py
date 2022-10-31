@@ -30,12 +30,7 @@ mydb = mysql.connector.connect(
 )
 # 竞争对手数据分析后台系统
 
-# mydb = mysql.connector.connect(#线上服务器数据库
-#   host="rdsrvrsep06wyx67yl78po.mysql.rds.aliyuncs.com",
-#   user="ls_shenzhen91_co",
-#   passwd="Stc64nb4hxcrdGtm",
-#   database="ls_shenzhen91_co"
-# )
+
 
 mycursor = mydb.cursor()
 
@@ -210,7 +205,7 @@ for ur in url_list:
             for e in en:
                 # print(e)
                 if(n[0]==e[0]):
-                    if(int(n[2])>int(e[2])):
+                    if(int(n[2])>int(e[2])):#价格不同的数据
                         sql="UPDATE `ba_project` SET `status`='1' WHERE (`name`='"+str(n[0])+"' and `price`='"+str(n[2])+"')"#涨价
                         mycursor.execute(sql)
                         rprice=rprice+1
@@ -222,7 +217,7 @@ for ur in url_list:
                         tprice=tprice+1
                         print(n)
                         print(e)
-                    if(int(n[1])>int(e[1])):
+                    if(int(n[1])>int(e[1])):#销售量不同的数据
                         rsale = rsale + (int(n[1])-int(e[1]))  #售货  
                     elif(int(n[1])<int(e[1])):
                         rtsale = rtsale - (int(n[1])-int(e[1])) #退货
@@ -248,7 +243,7 @@ for ur in url_list:
         #                 rsale =rsale+ (int(na[2])-int(zna[2]))  #售货  
         #             elif(int(na[2])<int(zna[2])):
         #                 rtsale = rtsale - (int(na[2])-int(zna[2])) #退货
-        
+        ##8.0
         # sql = "SELECT `*`, lag (`price`, 1, 0) over (ORDER BY `name`) AS tprice,lag (`sale`, 1, 0) over (ORDER BY `name`) as tsale FROM ba_project WHERE pid = "+str(id)+" and time>="+str(ztime)+" and name in(SELECT name FROM ba_project WHERE time >="+str(ztime)+" and pid="+str(id)+"  GROUP BY name HAVING count(name) =2) "
         # mycursor.execute(sql)
         # url_list = mycursor.fetchall()# name 相同的数据

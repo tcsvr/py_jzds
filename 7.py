@@ -10,20 +10,14 @@ import json
 import mysql.connector
 
 
-# mydb = mysql.connector.connect(
-#   host="localhost",
-#   user="root",
-#   passwd="root",
-#   database="is_shenzhen90_com"
-# )
+mydb = mysql.connector.connect(
+  host="localhost",
+  user="root",
+  passwd="root",
+  database="is_shenzhen90_com"
+)
 #评论系统
 
-mydb = mysql.connector.connect(#线上服务器数据库
-  host="rdsrvrsep06wyx67yl78po.mysql.rds.aliyuncs.com",
-  user="ls_shenzhen91_co",
-  passwd="Stc64nb4hxcrdGtm",
-  database="ls_shenzhen91_co"
-)
 
 mycursor = mydb.cursor()
 

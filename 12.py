@@ -29,12 +29,7 @@ mydb = mysql.connector.connect(
 )
 # 竞争对手数据分析后台系统
 
-# mydb = mysql.connector.connect(#线上服务器数据库
-#   host="rdsrvrsep06wyx67yl78po.mysql.rds.aliyuncs.com",
-#   user="ls_shenzhen91_co",
-#   passwd="Stc64nb4hxcrdGtm",
-#   database="ls_shenzhen91_co"
-# )
+
 
 mycursor = mydb.cursor()
 
