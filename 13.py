@@ -44,12 +44,7 @@ url_list = mycursor.fetchall()
 # for ur in url_list:
 #     print(ur)
 # exit(0)
-# for ur in url_list:
-#     id= ur[0]
-#     url= ur[1]
-#     print(url)
 
-# exit(0)
 
 # url_list=[
 #     'https://www.dianping.com/shop/G7Yc9UhIsKP88luu',
