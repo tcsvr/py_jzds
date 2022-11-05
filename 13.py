@@ -21,6 +21,9 @@ def filter_string(des_string, re_string=''):
     res = re.compile("[^\\u4e00-\\u9fa5^a-z^A-Z^0-9]")
     return res.sub(re_string, des_string)
 
+
+
+
 mydb = mysql.connector.connect(
     host="localhost",
     user="root",
@@ -34,8 +37,8 @@ mydb = mysql.connector.connect(
 
 mycursor = mydb.cursor()
 
-sql = "SELECT id ,url FROM ba_shop "
-# sql = "SELECT `*`, lag (`price`, 1, 0) over (ORDER BY `name`) AS tprice,lag (`sale`, 1, 0) over (ORDER BY `name`) as tsale FROM ba_project WHERE pid = 4 and time>=1666713600 and name in(SELECT name FROM ba_project WHERE time >=1666713600 and pid=4  GROUP BY name HAVING count(name) =2) "
+sql = "SELECT `id`,`url` FROM ba_jzshop order by id"
+# sql = "SELECT `*`, lag (`price`, 1, 0) over (ORDER BY `name`) AS tprice,lag (`sale`, 1, 0) over (ORDER BY `name`) as tsale FROM ba_jz_project WHERE pid = 4 and time>=1666713600 and name in(SELECT name FROM ba_jz_project WHERE time >=1666713600 and pid=4  GROUP BY name HAVING count(name) =2) "
 mycursor.execute(sql)
 url_list = mycursor.fetchall()
 # for ur in url_list:
@@ -95,11 +98,11 @@ for ur in url_list:
     print(type(response.text))
     # exit(0)
     selector = parsel.Selector(response.text)
-    city = selector.css('.J-current-city::text').get().strip()  # 城市
-    sname = selector.css('.shop-name::text').get().strip()  # 店名
+    city = str(selector.css('.J-current-city::text').get()).strip()  # 城市
+    sname = str(selector.css('.shop-name::text').get()).strip() # 店名
     # n
     # print(city)
-    # print(sname)
+    print(sname)
     # exit(0)
     j = json.dumps(response.text)
     a = json.loads(j)
@@ -110,6 +113,8 @@ for ur in url_list:
     hot =str(hot)
     hot = BeautifulSoup(hot, 'html.parser')
     hot = hot.find_all('a')
+    # print(hot)
+    # exit(0)
     hot1=hot[0].get('href')
     hot2=hot[1].get('href')
     company_item = str(company_item)
@@ -134,6 +139,8 @@ for ur in url_list:
             sid = paral[2][1]
             uid = paral[3][1]
             url = 'https://mapi.dianping.com/dzbook/prepayproductdetail.json2?platform=pc&channel=dp&clienttype=web&productid='+str(pid)+'&shopid='+str(sid)+'&shopuuid='+str(uid)+'&cityid=7'
+                 # https://www.dianping.com/node/universe-sku/advance/product-detail?pf=dppc&productid=758213300&shopid=929234597&shopuuid=HafSlI8fY6WsZ9K2
+                #  https://www.dianping.com/node/universe-sku/advance/product-detail?pf=dppc&productid=752326796&shopid=1545823211&shopuuid=laAyczAo9Lm3AkjF
             headers = {
                 'Host': 'mapi.dianping.com',
                 'Referer': 'https://www.dianping.com/shop/G7Yc9UhIsKP88luu',
@@ -152,15 +159,16 @@ for ur in url_list:
             con= con+1#项目总数
             
             
-            sql = "SELECT pid FROM ba_project WHERE time =  '"+str(time)+"' and name = '"+name+"' and pid = '"+str(id)+"'"
+            sql = "SELECT pid FROM ba_jz_project WHERE time =  '"+str(time)+"' and name = '"+name+"' and pid = '"+str(id)+"'"#检测数据是否存
             mycursor.execute(sql)
             myresult = mycursor.fetchall()
             # myresult = ''
             if myresult:
                 print("已存在")
+                print(name)
             else:
-                print("不存在")
-                sql = "insert into ba_project (name, sale,time,price,pid) values ('"+name+"','"+str(saleCount)+"','"+str(time)+"','"+str(price)+"','"+str(id)+"')"
+                # print("不存在")
+                sql = "insert into ba_jz_project (name, sale,time,price,url,pid) values ('"+name+"','"+str(saleCount)+"','"+str(time)+"','"+str(price)+"','"+str(url)+"','"+str(id)+"')"#数据入库
                 mycursor.execute(sql)
             mydb.commit()
             
@@ -182,15 +190,15 @@ for ur in url_list:
     shelves=0
     tshelves=0
     
-    sql = "SELECT id FROM ba_project WHERE time =  '"+str(ztime)+"' and pid = '"+str(id)+"' limit 0,1"
+    sql = "SELECT id FROM ba_jz_project WHERE time =  '"+str(ztime)+"' and pid = '"+str(id)+"' limit 0,1"
     mycursor.execute(sql)
     ztdata = mycursor.fetchall()
     if ztdata:#昨天的数据是否存在
-        sql="SELECT `name`,`sale`,`price`,`pid` FROM ba_project WHERE time="+str(time)+" and pid="+str(id)+" and name in(SELECT name FROM ba_project WHERE time >="+str(ztime)+" and pid="+str(id)+" GROUP BY name HAVING count(name) =2) ORDER BY `name`"
+        sql="SELECT `name`,`sale`,`price`,`pid` FROM ba_jz_project WHERE time="+str(time)+" and pid="+str(id)+" and name in(SELECT name FROM ba_jz_project WHERE time >="+str(ztime)+" and pid="+str(id)+" GROUP BY name HAVING count(name) =2) ORDER BY `name`"
         mycursor.execute(sql)
         name_list = mycursor.fetchall()# name 相同的数据
 
-        sql="SELECT `name`,`sale`,`price`,`pid` FROM ba_project WHERE time ="+str(ztime)+" and pid="+str(id)+" and name in(SELECT name FROM ba_project WHERE time >="+str(ztime)+" and pid="+str(id)+"  GROUP BY name HAVING count(name) =2) ORDER BY `name`"
+        sql="SELECT `name`,`sale`,`price`,`pid` FROM ba_jz_project WHERE time ="+str(ztime)+" and pid="+str(id)+" and name in(SELECT name FROM ba_jz_project WHERE time >="+str(ztime)+" and pid="+str(id)+"  GROUP BY name HAVING count(name) =2) ORDER BY `name`"
         mycursor.execute(sql)
         zname_list = mycursor.fetchall()# name 相同的数据
         
@@ -206,13 +214,13 @@ for ur in url_list:
                 # print(e)
                 if(n[0]==e[0]):
                     if(int(n[2])>int(e[2])):#价格不同的数据
-                        sql="UPDATE `ba_project` SET `status`='1' WHERE (`name`='"+str(n[0])+"' and `price`='"+str(n[2])+"')"#涨价
+                        sql="UPDATE `ba_jz_project` SET `status`='1' WHERE (`name`='"+str(n[0])+"' and `price`='"+str(n[2])+"')"#涨价
                         mycursor.execute(sql)
                         rprice=rprice+1
                         print(n)
                         print(e)
                     elif(int(n[2])<int(e[2])):   
-                        sql="UPDATE `ba_project` SET `status`='2' WHERE (`name`='"+str(n[0])+"' and `price`='"+str(n[2])+"')"#降价
+                        sql="UPDATE `ba_jz_project` SET `status`='2' WHERE (`name`='"+str(n[0])+"' and `price`='"+str(n[2])+"')"#降价
                         mycursor.execute(sql)
                         tprice=tprice+1
                         print(n)
@@ -228,13 +236,13 @@ for ur in url_list:
         #         # print(zna)
         #         if(na[1]==zna[1]):
         #             if(int(na[3])>int(zna[3])):
-        #                 sql="UPDATE `ba_project` SET `status`='1' WHERE (`id`="+str(na[0])+")"#涨价
+        #                 sql="UPDATE `ba_jz_project` SET `status`='1' WHERE (`id`="+str(na[0])+")"#涨价
         #                 mycursor.execute(sql)
         #                 rprice=rprice+1
         #                 print(na)
         #                 print(zna)
         #             elif(int(na[3])<int(zna[3])):   
-        #                 sql="UPDATE `ba_project` SET `status`='2' WHERE (`id`="+str(na[0])+")"#降价
+        #                 sql="UPDATE `ba_jz_project` SET `status`='2' WHERE (`id`="+str(na[0])+")"#降价
         #                 mycursor.execute(sql)
         #                 tprice=tprice+1
         #                 print(na)
@@ -244,19 +252,19 @@ for ur in url_list:
         #             elif(int(na[2])<int(zna[2])):
         #                 rtsale = rtsale - (int(na[2])-int(zna[2])) #退货
         ##8.0
-        # sql = "SELECT `*`, lag (`price`, 1, 0) over (ORDER BY `name`) AS tprice,lag (`sale`, 1, 0) over (ORDER BY `name`) as tsale FROM ba_project WHERE pid = "+str(id)+" and time>="+str(ztime)+" and name in(SELECT name FROM ba_project WHERE time >="+str(ztime)+" and pid="+str(id)+"  GROUP BY name HAVING count(name) =2) "
+        # sql = "SELECT `*`, lag (`price`, 1, 0) over (ORDER BY `name`) AS tprice,lag (`sale`, 1, 0) over (ORDER BY `name`) as tsale FROM ba_jz_project WHERE pid = "+str(id)+" and time>="+str(ztime)+" and name in(SELECT name FROM ba_jz_project WHERE time >="+str(ztime)+" and pid="+str(id)+"  GROUP BY name HAVING count(name) =2) "
         # mycursor.execute(sql)
         # url_list = mycursor.fetchall()# name 相同的数据
         # for ur in url_list:
         #     # print (ur)
         #     if(ur[4]==time):
         #         if(int(ur[3])>int(ur[7])):
-        #             sql="UPDATE `ba_project` SET `status`='1' WHERE (`id`="+str(ur[0])+")"#涨价
+        #             sql="UPDATE `ba_jz_project` SET `status`='1' WHERE (`id`="+str(ur[0])+")"#涨价
         #             mycursor.execute(sql)
         #             rprice=+1
         #             print(ur)
         #         elif(int(ur[3])<int(ur[7])):   
-        #             sql="UPDATE `ba_project` SET `status`='2' WHERE (`id`="+str(ur[0])+")"#降价
+        #             sql="UPDATE `ba_jz_project` SET `status`='2' WHERE (`id`="+str(ur[0])+")"#降价
         #             mycursor.execute(sql)
         #             tprice=+1
         #             print(ur)
@@ -266,18 +274,18 @@ for ur in url_list:
         #             rtsale = rtsale - (int(ur[2])-int(ur[8])) 
                     
 
-        sql ="SELECT * FROM ba_project WHERE time>="+str(ztime)+" and  name in( SELECT name FROM ba_project WHERE time>="+str(ztime)+" and pid="+str(id)+" GROUP BY name HAVING count(name) =1) and pid ="+str(id)+" ORDER BY name"
+        sql ="SELECT * FROM ba_jz_project WHERE time>="+str(ztime)+" and  name in( SELECT name FROM ba_jz_project WHERE time>="+str(ztime)+" and pid="+str(id)+" GROUP BY name HAVING count(name) =1) and pid ="+str(id)+" ORDER BY name"
         mycursor.execute(sql)
         dname = mycursor.fetchall()# name 不相同的数据      
         for da in dname:
             print(da)
             if(da[4]==time):
-                sql="UPDATE `ba_project` SET `status`='3' WHERE (`id`="+str(da[0])+")"#上架
+                sql="UPDATE `ba_jz_project` SET `status`='3' WHERE (`id`="+str(da[0])+")"#上架
                 rsale = rsale+int(da[2])
                 mycursor.execute(sql)
                 shelves=shelves+1
             elif(da[4]==ztime):    
-                sql="UPDATE `ba_project` SET `status`='4' WHERE (`id`="+str(da[0])+")"#下架
+                sql="UPDATE `ba_jz_project` SET `status`='4' WHERE (`id`="+str(da[0])+")"#下架
                 mycursor.execute(sql)
                 tshelves=tshelves+1  
     print(rsale)             
@@ -286,14 +294,20 @@ for ur in url_list:
     print(tprice)             
     print(shelves)             
     print(tshelves)                
+    # print(type(rsale))             
+    # print(type(rtsale))             
+    # print(type(rprice))             
+    # print(type(tprice))             
+    # print(type(shelves))             
+    # print(type(tshelves))                
     # exit(0)     
-    sql = "SELECT id FROM ba_contend WHERE time =  '"+str(time)+"' and pid = '"+str(id)+"'"
+    sql = "SELECT id FROM ba_jz_contend WHERE time =  '"+str(time)+"' and pid = '"+str(id)+"'"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     if myresult:
         print("已存在")
     else:
         print("不存在")
-        sql = "insert into ba_contend (pid, sale,sales,time,city,rprice,tprice,shelves,tshelves,con) values ('"+str(id)+"','"+str(rsale)+"','"+str(cs)+"','"+str(time)+"','"+city+"','" +str(rprice)+"','"+str(tprice)+"','"+str(shelves)+"','"+str(tshelves)+"','"+str(con)+"')"
+        sql = "insert into ba_jz_contend (pid, sale,sales,time,city,rprice,tprice,shelves,tshelves,con) values ('"+str(id)+"','"+str(rsale)+"','"+str(cs)+"','"+str(time)+"','"+city+"','" +str(rprice)+"','"+str(tprice)+"','"+str(shelves)+"','"+str(tshelves)+"','"+str(con)+"')"
         mycursor.execute(sql)
     mydb.commit()
