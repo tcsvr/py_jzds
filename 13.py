@@ -1,27 +1,30 @@
+#-- coding:UTF-8 --
 # 竞争对手数据分析后台系统(数据存入 数据库)
 from cgi import print_arguments
 from cmd import IDENTCHARS
 from re import T
 import requests
 import parsel
-import csv
+# import csv
 import os
 import time
 import datetime
 from bs4 import BeautifulSoup
 from urllib import parse
 from urllib.parse import urlparse
-from lxml import etree
+# from lxml import etree
 from scrapy import Selector
 import json
 import mysql.connector
 import re
+import random
+from fake_useragent import UserAgent
 # 通过re过滤除中英文及数字以外的其他字符
+
+
 def filter_string(des_string, re_string=''):
     res = re.compile("[^\\u4e00-\\u9fa5^a-z^A-Z^0-9]")
     return res.sub(re_string, des_string)
-
-
 
 
 mydb = mysql.connector.connect(
@@ -37,14 +40,20 @@ mydb = mysql.connector.connect(
 
 mycursor = mydb.cursor()
 
-sql = "SELECT `id`,`url` FROM ba_jzshop order by id"
+sql = "SELECT `id`,`url`,`name` FROM ba_jzshop where id =5 order by id limit 0,1"
+# sql = "SELECT `id`,`url`,`name` FROM ba_jzshop  where id =0  order by id"
 # sql = "SELECT `*`, lag (`price`, 1, 0) over (ORDER BY `name`) AS tprice,lag (`sale`, 1, 0) over (ORDER BY `name`) as tsale FROM ba_jz_project WHERE pid = 4 and time>=1666713600 and name in(SELECT name FROM ba_jz_project WHERE time >=1666713600 and pid=4  GROUP BY name HAVING count(name) =2) "
 mycursor.execute(sql)
 url_list = mycursor.fetchall()
 # for ur in url_list:
 #     print(ur)
 # exit(0)
+# for ur in url_list:
+#     id= ur[0]
+#     url= ur[1]
+#     print(url)
 
+# exit(0)
 
 # url_list=[
 #     'https://www.dianping.com/shop/G7Yc9UhIsKP88luu',
@@ -58,115 +67,276 @@ date_array = time.strptime(str(w), "%Y-%m-%d")
 date_arrayz = time.strptime(str(zt), "%Y-%m-%d")
 # print(date_array)
 # print(date_arrayz)
-time = int(time.mktime(date_array))#今天
-ztime = int(time)-24*60*60#time的昨天
-# print(time)
-# print(ztime)
-# # print(url_list)
+time = int(time.mktime(date_array))-24*60*60  # 今天
+ztime = int(time)-24*60*60  # time的昨天
+
+print(time)
+print(ztime)
+print(url_list)
 # exit(0)
-for ur in url_list:
-    id= ur[0]
-    url= ur[1]
-    # print(url)
-    # exit(0)
-    # shop = url.split('shop/')[1]
-    # wjm = str(shop)+str(w)+'.csv'  # 文件名 商店id+时间
-    # wjmz = str(shop)+str(zt)+'.csv'  # 文件名 商店id+时间
+# import time
+# 睡眠时间
+# def sleeptime(s):
+#     # 时间间隔time秒
+#     print("休息",end="")
+#     for i in range(s):
+#         print(type(s))
+#         time.sleep(1)
+#         print("第"+str(i+1)+"秒 ",end="")
+# # print(time)
+# exit(0)
 
-    # f = open(wjm, 'w', newline='')
-    # csv_writer = csv.DictWriter(f, fieldnames=[
-    #     '项目名称',
-    #     '项目价格',
-    #     '销售量',
-    # ])
-    # csv_writer.writeheader()
+s = requests.session()
+# print(s.headers)
+# #伪造请求头部，伪装成从真实浏览器发出的请求
+h = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36"
+}
+s.headers.update(h)
 
+def request_header():
     headers = {
-        'Host': 'www.dianping.com',
-        'Referer': 'https://www.dianping.com/shop/G7Yc9UhIsKP88luu',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36',
-        "Cookie": '_lxsdk_cuid=182d2e7a87376-0263598e1d211a-3b3d5203-1fa400-182d2e7a875c8; _lxsdk=182d2e7a87376-0263598e1d211a-3b3d5203-1fa400-182d2e7a875c8; _hc.v=fca25476-1075-20dc-e29a-ed63d2b3c436.1661395775; fspop=test; _lx_utm=utm_source%3DBaidu%26utm_medium%3Dorganic; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1666313445; cy=1; cye=shanghai; s_ViewType=10; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1666318032; _lxsdk_s=183f85aba51-441-c20-3e7%7C%7C1'
+        # 'User-Agent': UserAgent().random #常见浏览器的请求头伪装（如：火狐,谷歌）
+        'User-Agent': UserAgent().Chrome  # 谷歌浏览器
     }
+    # print(type(UserAgent()))
+    # for i in UserAgent:
+    #     print(i)
+    # print(headers)
+    return headers
+def send_request(url):
+    response = requests.get(
+        url=f'https://www.proxy-list.download/api/v2/get?l=en&t=http', headers=request_header())
+    # text = response.text.encode('ISO-8859-1')
+    j = json.loads(response.text)
+    tr_list = j['LISTA']
+    for td in tr_list:
+        ip_ = td['IP']
+        port_ = td['PORT']
+        proxy = ip_ + ':' + port_  # 115.218.5.5:9000
+        test_ip(proxy,url)  # 开始检测获取到的ip是否可以使用
+        if proxy == test_ip(proxy,url):
+            return proxy
+def test_ip(proxy, url="http://www.shenzhen91.com/"):
+    # 构建代理ip
+    proxies = {
+        "http": "http://" + proxy,
+        "https": "http://" + proxy,
+    }
+    try:
+        response = requests.get(url=url, headers=request_header(),
+                                proxies=proxies, timeout=1)  # 设置timeout，使响应等待1s
+        if response.status_code == 200:
+            print(proxy)
+            return proxy
 
-    response = requests.get(url, headers=headers)
+    except:
+        print(proxy, '请求异常')
+
+for ur in url_list:
+    id = ur[0]
+    url = ur[1]
+
+    sql = "SELECT id FROM ba_jz_contend WHERE time =  '" + \
+        str(time)+"' and pid = '"+str(id)+"'"
+    mycursor.execute(sql)
+    myresult = mycursor.fetchall()
+    if myresult:
+        print(id)
+        print("已存在0跳出本次循环")
+        continue  # 跳出本次循环
+    import time
+    # 睡眠时间
+    def sleeptime(s):
+        # 时间间隔time秒
+        print("休息", end="")
+        for i in range(s):
+            time.sleep(1)
+            print("第"+str(i+1)+"秒 ", end="")
+    stime = random.randint(1,2)
+    sleeptime(stime)
+    time = int(time.mktime(date_array))  # 今天(命名出现bug 重新获取时间)
+
+
+    headers = [
+        {
+        'Host': 'www.dianping.com',
+        'Referer': url,
+        'User-Agent':UserAgent().Chrome,
+        "Cookie": '__mta=245675963.1667553086131.1667553086131.1667553086131.1; cy=7; cityid=7; cye=shenzhen; _lxsdk_cuid=182d2e7a87376-0263598e1d211a-3b3d5203-1fa400-182d2e7a875c8; _lxsdk=182d2e7a87376-0263598e1d211a-3b3d5203-1fa400-182d2e7a875c8; _hc.v=fca25476-1075-20dc-e29a-ed63d2b3c436.1661395775; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1666682005; s_ViewType=10; WEBDFPID=v3y1vz815vv655vu0yzz49865368w5x081558v48zv7979587u7w5z08-1982912843054-1667552842511CKEUMOIfd79fef3d01d5e9aadc18ccd4d0c95072773; aburl=1; ctu=70159c3dea4054244f82221ceea4a625da1342f6106402faaf6ee6af7df83a9f; fspop=test; cy=2; cye=beijing; dplet=428974719157fe6718c9f7c1cda1a71b; dper=1632cd81f4b05219e116fe2e1a07f65291a66f7d5866c2ebf46290e93cc5bb1a47880b5c0a1b3c37306fa493dab91ee863fa7e9db37ee8d7b0eff1ee9b8daf50bb0f0c58d01ddcf1b11693048dbaae47f61f87e26b5789184f45ec13759c1840; ll=7fd06e815b796be3df069dec7836c3df; ua=dpuser_3476436004; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1668072326; _lxsdk_s=18460bbb1a5-3c-b5e-f54%7C%7C21'
+        },{
+        'Host': 'www.dianping.com',
+        'Referer': url,
+        'User-Agent':UserAgent().Chrome,
+        },{
+            'Host': 'www.dianping.com',
+            'Referer': url,
+            'User-Agent':UserAgent().firefox,
+            'Accept': 'application/json, text/javascript',
+            # 'User-Agent':UserAgent().Chrome,
+            # 'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36',
+            "Cookie": 'cy=1; cityid=1; cye=shanghai; _lxsdk_cuid=18407d265b220-02df1e3ca332668-4076032e-1fa400-18407d265b4c8; _lxsdk=18407d265b220-02df1e3ca332668-4076032e-1fa400-18407d265b4c8; _hc.v=b7d2b53a-4bba-c0d1-8e4c-e3895822e059.1666578540; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1666578540,1667871521; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1668072110; WEBDFPID=8304u1vx37845z44y9030v61zw0vxv6z815448v1u1v97958y645z7z9-1983235374873-1667875373425WWIWICO10f02007e9804b0b4cf483cebf1f9f519412; s_ViewType=10; fspop=test; cy=7; cye=shenzhen; ctu=70159c3dea4054244f82221ceea4a625a0e4b97b8d4194192729d58089ece748; _lxsdk_s=18460bcaae1-9e6-79c-649%7C%7C23; lgtoken=07368b436-42aa-48b2-89bb-b0639d60a824; dplet=d051f5c4e0d6316d5c8d6ddd44258b61; dper=1632cd81f4b05219e116fe2e1a07f652f96394a8f9adce3c0431c0db650e87483476bfdd7a730d1be84d5d16f1e82a7da179bb59ce86908309076c9a184c690a1280963748137f25091d59e04654b6183dd36c0dd415b2c710390f6d8a206273; ll=7fd06e815b796be3df069dec7836c3df; ua=dpuser_3476436004'
+
+        },{
+            'Host': 'www.dianping.com',
+            'Referer': url,
+            'User-Agent':UserAgent().firefox,
+            'Accept': 'application/json, text/javascript',
+
+        }
+    ]
+    ha=random.randint(0,len(headers)-1)
+    ha=0
+    # print(ha)
+    # print(type(headers[int(ha)]))
+    # print(headers[int(ha)])
+    response = requests.get(url, headers=headers[int(ha)])
+    response.encoding = "utf-8"
     # print(response.text)
     print(type(response.text))
     # exit(0)
     selector = parsel.Selector(response.text)
+    # selector=''
     city = str(selector.css('.J-current-city::text').get()).strip()  # 城市
-    sname = str(selector.css('.shop-name::text').get()).strip() # 店名
+    if len(city)==0 or city == 'None':
+        mycursor = mydb.cursor()
+        sql = "SELECT city FROM ba_jz_contend WHERE   pid = '"+str(id)+"' limit 0,1"  # 城市
+        mycursor.execute(sql)
+        city = filter_string(str(mycursor.fetchone()))
+        
+    sname = str(selector.css('.shop-name::text').get()).strip()  # 店名
+    if len(sname)==0 or sname == 'None':
+        sname = ur[2]
     # n
-    # print(city)
+    print(url)
+    print(city)
     print(sname)
-    # exit(0)
+    # print('sss')
+    # print(len(city))
+    # print(len(sname))
     j = json.dumps(response.text)
     a = json.loads(j)
 
     soup = BeautifulSoup(a, 'html.parser')
     company_item = soup.find_all('a', class_="small")
     hot = soup.find_all('a', class_="block-link")
-    hot =str(hot)
+    hot = str(hot)
     hot = BeautifulSoup(hot, 'html.parser')
     hot = hot.find_all('a')
-    # print(hot)
+    # print(len(hot))
     # exit(0)
-    hot1=hot[0].get('href')
-    hot2=hot[1].get('href')
     company_item = str(company_item)
     company_item = BeautifulSoup(company_item, 'html.parser')
     t1 = company_item.find_all('a')
     # print(t1)
     href_list = []
-    href_list.append(hot1)
-    href_list.append(hot2)
+    if (len(hot) > 2):
+        hot1 = hot[0].get('href')
+        hot2 = hot[1].get('href')
+        href_list.append(hot1)
+        href_list.append(hot2)
     for t2 in t1:
         t3 = t2.get('href')
         href_list.append(t3)
     cp = 0
     cs = 0
     con = 0  # 项目总数
-    
+    if len(href_list)==0 or href_list=='None':
+        sql = "SELECT id,url FROM ba_jz_project WHERE time =  '" + \
+                str(ztime)+"' and pid = '"+str(id)+"'"  # 检测数据是否存
+        mycursor.execute(sql)
+        href_lis = mycursor.fetchall()
+        # print(href_lis)
+        if href_lis:
+            for i in href_lis:
+                href_list.append(i[1])
+        # print('sql1') 
     for i in href_list:
         if len(i) > 50:
+            
+            # import time
+            # # 睡眠时间
+            # def sleeptime(s):
+            #     # 时间间隔time秒
+            #     print("休息", end="")
+            #     for i in range(s):
+            #         time.sleep(1)
+            #         print("第"+str(i+1)+"秒 ", end="")
+            # stime = random.randint(1,3)
+            # sleeptime(stime)
+            # time = int(time.mktime(date_array)) # 今天(命名出现bug 重新获取时间)
+            
             url = urlparse(i)
             paral = parse.parse_qsl(url.query)
             pid = paral[1][1]
             sid = paral[2][1]
             uid = paral[3][1]
-            url = 'https://mapi.dianping.com/dzbook/prepayproductdetail.json2?platform=pc&channel=dp&clienttype=web&productid='+str(pid)+'&shopid='+str(sid)+'&shopuuid='+str(uid)+'&cityid=7'
-                 # https://www.dianping.com/node/universe-sku/advance/product-detail?pf=dppc&productid=758213300&shopid=929234597&shopuuid=HafSlI8fY6WsZ9K2
-                #  https://www.dianping.com/node/universe-sku/advance/product-detail?pf=dppc&productid=752326796&shopid=1545823211&shopuuid=laAyczAo9Lm3AkjF
-            headers = {
+            url = 'https://mapi.dianping.com/dzbook/prepayproductdetail.json2?platform=pc&channel=dp&clienttype=web&productid=' + \
+                str(pid)+'&shopid='+str(sid)+'&shopuuid='+str(uid)+'&cityid=7'
+            urlp = 'https://www.dianping.com/node/universe-sku/advance/product-detail?pf=dppc&productid=' + \
+                str(pid)+'&shopid='+str(sid)+'&shopuuid='+str(uid)
+            #  https://www.dianping.com/node/universe-sku/advance/product-detail?pf=dppc&productid=752326796&shopid=1545823211&shopuuid=laAyczAo9Lm3AkjF
+            # headers = {
+            #     'Host': 'mapi.dianping.com',
+            #     'Referer': urlp,
+            #     'User-Agent':UserAgent().firefox,
+            #     # 'User-Agent':UserAgent().Chrome,
+            #     # 'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36',
+            #     "Cookie": 'cy=1; cityid=1; cye=shanghai; _lxsdk_cuid=18407d265b220-02df1e3ca332668-4076032e-1fa400-18407d265b4c8; _lxsdk=18407d265b220-02df1e3ca332668-4076032e-1fa400-18407d265b4c8; _hc.v=b7d2b53a-4bba-c0d1-8e4c-e3895822e059.1666578540; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1666578540,1667871521; _lxsdk_s=18454e3b505-c63-096-5a7%7C%7C1; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1667871521'
+            # }
+            headers = [
+                {
                 'Host': 'mapi.dianping.com',
-                'Referer': 'https://www.dianping.com/shop/G7Yc9UhIsKP88luu',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36',
-                "Cookie": '_lxsdk_cuid=182d2e7a87376-0263598e1d211a-3b3d5203-1fa400-182d2e7a875c8; _lxsdk=182d2e7a87376-0263598e1d211a-3b3d5203-1fa400-182d2e7a875c8; _hc.v=fca25476-1075-20dc-e29a-ed63d2b3c436.1661395775; fspop=test; _lx_utm=utm_source%3DBaidu%26utm_medium%3Dorganic; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1666313445; cy=1; cye=shanghai; s_ViewType=10; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1666336356'
-            }
-            response = requests.get(url, headers=headers)
+                'Referer': urlp,
+                'User-Agent':UserAgent().Chrome,
+                "Cookie": '_lxsdk_cuid=182d2e7a87376-0263598e1d211a-3b3d5203-1fa400-182d2e7a875c8; _lxsdk=182d2e7a87376-0263598e1d211a-3b3d5203-1fa400-182d2e7a875c8; _hc.v=fca25476-1075-20dc-e29a-ed63d2b3c436.1661395775; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1666682005; s_ViewType=10; WEBDFPID=v3y1vz815vv655vu0yzz49865368w5x081558v48zv7979587u7w5z08-1982912843054-1667552842511CKEUMOIfd79fef3d01d5e9aadc18ccd4d0c95072773; aburl=1; ctu=70159c3dea4054244f82221ceea4a625da1342f6106402faaf6ee6af7df83a9f; fspop=test; cy=2; cye=beijing; lgtoken=018fa77a2-eec4-42af-b65b-7b00c49ad2be; dplet=428974719157fe6718c9f7c1cda1a71b; dper=1632cd81f4b05219e116fe2e1a07f65291a66f7d5866c2ebf46290e93cc5bb1a47880b5c0a1b3c37306fa493dab91ee863fa7e9db37ee8d7b0eff1ee9b8daf50bb0f0c58d01ddcf1b11693048dbaae47f61f87e26b5789184f45ec13759c1840; ll=7fd06e815b796be3df069dec7836c3df; ua=dpuser_3476436004; _lxsdk_s=18460bbb1a5-3c-b5e-f54%7C%7C22; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1668072383'
+                },{
+                'Host': 'mapi.dianping.com',
+                'Referer': urlp,
+                'User-Agent':UserAgent().Chrome,
+                },{
+                    'Host': 'mapi.dianping.com',
+                    'Referer': urlp,
+                    'User-Agent':UserAgent().firefox,
+                    # 'User-Agent':UserAgent().Chrome,
+                    # 'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36',
+                    "Cookie": '_lxsdk_cuid=18407d265b220-02df1e3ca332668-4076032e-1fa400-18407d265b4c8; _lxsdk=18407d265b220-02df1e3ca332668-4076032e-1fa400-18407d265b4c8; _hc.v=b7d2b53a-4bba-c0d1-8e4c-e3895822e059.1666578540; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1666578540,1667871521; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1668072178; WEBDFPID=8304u1vx37845z44y9030v61zw0vxv6z815448v1u1v97958y645z7z9-1983235374873-1667875373425WWIWICO10f02007e9804b0b4cf483cebf1f9f519412; s_ViewType=10; fspop=test; cy=7; cye=shenzhen; ctu=70159c3dea4054244f82221ceea4a625a0e4b97b8d4194192729d58089ece748; _lxsdk_s=18460bcaae1-9e6-79c-649%7C%7C25; lgtoken=07368b436-42aa-48b2-89bb-b0639d60a824; dplet=d051f5c4e0d6316d5c8d6ddd44258b61; dper=1632cd81f4b05219e116fe2e1a07f652f96394a8f9adce3c0431c0db650e87483476bfdd7a730d1be84d5d16f1e82a7da179bb59ce86908309076c9a184c690a1280963748137f25091d59e04654b6183dd36c0dd415b2c710390f6d8a206273; ll=7fd06e815b796be3df069dec7836c3df; ua=dpuser_3476436004'
+
+                },{
+                    'Host': 'mapi.dianping.com',
+                    'Referer': urlp,
+                    'User-Agent':UserAgent().firefox,
+                }
+            ]
+            # print(headers[int(ha)])
+            response = requests.get(url, headers=headers[int(ha)])
+            # print(response)
             j = json.loads(response.text)
             data = j['data']
             name = filter_string(data['name'])  # 项目名称
-            data['name']=filter_string(data['name'])#特殊字符过滤
+            data['name'] = filter_string(data['name'])  # 特殊字符过滤
             price = data['price']  # 项目价格
             saleCount = data['saleCount']  # 单个已售数量
-            cp += price*saleCount#销售总额
+            cp += price*saleCount  # 销售总额
             cs += saleCount  # 总销售量
-            con= con+1#项目总数
-            
-            
-            sql = "SELECT pid FROM ba_jz_project WHERE time =  '"+str(time)+"' and name = '"+name+"' and pid = '"+str(id)+"'"#检测数据是否存
+            con = con+1  # 项目总数
+
+            sql = "SELECT pid FROM ba_jz_project WHERE time =  '" + \
+                str(time)+"' and name = '"+name + \
+                "' and pid = '"+str(id)+"'"  # 检测数据是否存
             mycursor.execute(sql)
             myresult = mycursor.fetchall()
             # myresult = ''
             if myresult:
-                print("已存在")
+                # print("已存在")
                 print(name)
             else:
                 # print("不存在")
-                sql = "insert into ba_jz_project (name, sale,time,price,url,pid) values ('"+name+"','"+str(saleCount)+"','"+str(time)+"','"+str(price)+"','"+str(url)+"','"+str(id)+"')"#数据入库
+                sql = "insert into ba_jz_project (name, sale,time,price,url,pid) values ('"+name+"','"+str(
+                    saleCount)+"','"+str(time)+"','"+str(price)+"','"+str(urlp)+"','"+str(id)+"')"  # 数据入库
                 mycursor.execute(sql)
             mydb.commit()
-            
+
             # print(name)
             # print(price)
             # print(saleCount)
@@ -176,29 +346,33 @@ for ur in url_list:
     #             '销售量': data['saleCount'],
     #         }
     #         csv_writer.writerow(dit)
-    # f.close()# 影响后面函数 compa    
+    # f.close()# 影响后面函数 compa
     print(cs)  # 总销售量
-    rsale =0
-    rtsale =0
-    rprice=0
-    tprice=0
-    shelves=0
-    tshelves=0
-    
-    sql = "SELECT id FROM ba_jz_project WHERE time =  '"+str(ztime)+"' and pid = '"+str(id)+"' limit 0,1"
+    # exit(0)
+    rsale = 0
+    rtsale = 0
+    rprice = 0
+    tprice = 0
+    shelves = 0
+    tshelves = 0
+
+    sql = "SELECT id FROM ba_jz_project WHERE time =  '" + \
+        str(ztime)+"' and pid = '"+str(id)+"' limit 0,1"
     mycursor.execute(sql)
     ztdata = mycursor.fetchall()
-    if ztdata:#昨天的数据是否存在
-        sql="SELECT `name`,`sale`,`price`,`pid` FROM ba_jz_project WHERE time="+str(time)+" and pid="+str(id)+" and name in(SELECT name FROM ba_jz_project WHERE time >="+str(ztime)+" and pid="+str(id)+" GROUP BY name HAVING count(name) =2) ORDER BY `name`"
+    if ztdata:  # 昨天的数据是否存在
+        sql = "SELECT `name`,`sale`,`price`,`pid` FROM ba_jz_project WHERE time="+str(time)+" and pid="+str(
+            id)+" and name in(SELECT name FROM ba_jz_project WHERE time >="+str(ztime)+" and pid="+str(id)+" GROUP BY name HAVING count(name) =2) ORDER BY `name`"
         mycursor.execute(sql)
-        name_list = mycursor.fetchall()# name 相同的数据
+        name_list = mycursor.fetchall()  # name 相同的数据
 
-        sql="SELECT `name`,`sale`,`price`,`pid` FROM ba_jz_project WHERE time ="+str(ztime)+" and pid="+str(id)+" and name in(SELECT name FROM ba_jz_project WHERE time >="+str(ztime)+" and pid="+str(id)+"  GROUP BY name HAVING count(name) =2) ORDER BY `name`"
+        sql = "SELECT `name`,`sale`,`price`,`pid` FROM ba_jz_project WHERE time ="+str(ztime)+" and pid="+str(
+            id)+" and name in(SELECT name FROM ba_jz_project WHERE time >="+str(ztime)+" and pid="+str(id)+"  GROUP BY name HAVING count(name) =2) ORDER BY `name`"
         mycursor.execute(sql)
-        zname_list = mycursor.fetchall()# name 相同的数据
-        
-        ne= (set(name_list) - set(zname_list))#去掉完全相同的数据
-        en= (set(zname_list) - set(name_list))#去掉完全相同的数据
+        zname_list = mycursor.fetchall()  # name 相同的数据
+
+        ne = (set(name_list) - set(zname_list))  # 去掉完全相同的数据
+        en = (set(zname_list) - set(name_list))  # 去掉完全相同的数据
         # print(len(name_list))
         # print(len(ne))
         # print(len(zname_list))
@@ -207,23 +381,25 @@ for ur in url_list:
             # print(n)
             for e in en:
                 # print(e)
-                if(n[0]==e[0]):
-                    if(int(n[2])>int(e[2])):#价格不同的数据
-                        sql="UPDATE `ba_jz_project` SET `status`='1' WHERE (`name`='"+str(n[0])+"' and `price`='"+str(n[2])+"')"#涨价
+                if (n[0] == e[0]):
+                    if (int(n[2]) > int(e[2])):  # 价格不同的数据
+                        sql = "UPDATE `ba_jz_project` SET `status`='1' WHERE (`name`='"+str(
+                            n[0])+"' and `price`='"+str(n[2])+"')"  # 涨价
                         mycursor.execute(sql)
-                        rprice=rprice+1
+                        rprice = rprice+1
                         print(n)
                         print(e)
-                    elif(int(n[2])<int(e[2])):   
-                        sql="UPDATE `ba_jz_project` SET `status`='2' WHERE (`name`='"+str(n[0])+"' and `price`='"+str(n[2])+"')"#降价
+                    elif (int(n[2]) < int(e[2])):
+                        sql = "UPDATE `ba_jz_project` SET `status`='2' WHERE (`name`='"+str(
+                            n[0])+"' and `price`='"+str(n[2])+"')"  # 降价
                         mycursor.execute(sql)
-                        tprice=tprice+1
+                        tprice = tprice+1
                         print(n)
                         print(e)
-                    if(int(n[1])>int(e[1])):#销售量不同的数据
-                        rsale = rsale + (int(n[1])-int(e[1]))  #售货  
-                    elif(int(n[1])<int(e[1])):
-                        rtsale = rtsale - (int(n[1])-int(e[1])) #退货
+                    if (int(n[1]) > int(e[1])):  # 销售量不同的数据
+                        rsale = rsale + (int(n[1])-int(e[1]))  # 售货
+                    elif (int(n[1]) < int(e[1])):
+                        rtsale = rtsale - (int(n[1])-int(e[1]))  # 退货
 
         # for na in name_list:
         #     # print(na)
@@ -236,17 +412,17 @@ for ur in url_list:
         #                 rprice=rprice+1
         #                 print(na)
         #                 print(zna)
-        #             elif(int(na[3])<int(zna[3])):   
+        #             elif(int(na[3])<int(zna[3])):
         #                 sql="UPDATE `ba_jz_project` SET `status`='2' WHERE (`id`="+str(na[0])+")"#降价
         #                 mycursor.execute(sql)
         #                 tprice=tprice+1
         #                 print(na)
         #                 print(zna)
         #             if(int(na[2])>int(zna[2])):
-        #                 rsale =rsale+ (int(na[2])-int(zna[2]))  #售货  
+        #                 rsale =rsale+ (int(na[2])-int(zna[2]))  #售货
         #             elif(int(na[2])<int(zna[2])):
         #                 rtsale = rtsale - (int(na[2])-int(zna[2])) #退货
-        ##8.0
+        # 8.0
         # sql = "SELECT `*`, lag (`price`, 1, 0) over (ORDER BY `name`) AS tprice,lag (`sale`, 1, 0) over (ORDER BY `name`) as tsale FROM ba_jz_project WHERE pid = "+str(id)+" and time>="+str(ztime)+" and name in(SELECT name FROM ba_jz_project WHERE time >="+str(ztime)+" and pid="+str(id)+"  GROUP BY name HAVING count(name) =2) "
         # mycursor.execute(sql)
         # url_list = mycursor.fetchall()# name 相同的数据
@@ -258,51 +434,75 @@ for ur in url_list:
         #             mycursor.execute(sql)
         #             rprice=+1
         #             print(ur)
-        #         elif(int(ur[3])<int(ur[7])):   
+        #         elif(int(ur[3])<int(ur[7])):
         #             sql="UPDATE `ba_jz_project` SET `status`='2' WHERE (`id`="+str(ur[0])+")"#降价
         #             mycursor.execute(sql)
         #             tprice=+1
         #             print(ur)
         #         if(int(ur[2])>int(ur[8])):
-        #             rsale = rsale + (int(ur[2])-int(ur[8]))    
+        #             rsale = rsale + (int(ur[2])-int(ur[8]))
         #         elif(int(ur[2])<int(ur[8])):
-        #             rtsale = rtsale - (int(ur[2])-int(ur[8])) 
-                    
-
-        sql ="SELECT * FROM ba_jz_project WHERE time>="+str(ztime)+" and  name in( SELECT name FROM ba_jz_project WHERE time>="+str(ztime)+" and pid="+str(id)+" GROUP BY name HAVING count(name) =1) and pid ="+str(id)+" ORDER BY name"
+        #             rtsale = rtsale - (int(ur[2])-int(ur[8]))
+        sql = "SELECT id FROM ba_jz_project WHERE time =  '" + \
+        str(time)+"' and pid = '"+str(id)+"' limit 0,1"
         mycursor.execute(sql)
-        dname = mycursor.fetchall()# name 不相同的数据      
-        for da in dname:
-            print(da)
-            if(da[4]==time):
-                sql="UPDATE `ba_jz_project` SET `status`='3' WHERE (`id`="+str(da[0])+")"#上架
-                rsale = rsale+int(da[2])
-                mycursor.execute(sql)
-                shelves=shelves+1
-            elif(da[4]==ztime):    
-                sql="UPDATE `ba_jz_project` SET `status`='4' WHERE (`id`="+str(da[0])+")"#下架
-                mycursor.execute(sql)
-                tshelves=tshelves+1  
-    print(rsale)             
-    print(rtsale)             
-    print(rprice)             
-    print(tprice)             
-    print(shelves)             
-    print(tshelves)                
-    # print(type(rsale))             
-    # print(type(rtsale))             
-    # print(type(rprice))             
-    # print(type(tprice))             
-    # print(type(shelves))             
-    # print(type(tshelves))                
-    # exit(0)     
-    sql = "SELECT id FROM ba_jz_contend WHERE time =  '"+str(time)+"' and pid = '"+str(id)+"'"
+        jtdata = mycursor.fetchall()
+        if jtdata:  # 今天的数据是否存在
+            sql = "SELECT * FROM ba_jz_project WHERE time>="+str(ztime)+" and  name in( SELECT name FROM ba_jz_project WHERE time>="+str(
+                ztime)+" and pid="+str(id)+" GROUP BY name HAVING count(name) =1) and pid ="+str(id)+" ORDER BY name"
+            mycursor.execute(sql)
+            dname = mycursor.fetchall()  # name 不相同的数据
+            for da in dname:
+                print(da)
+                if (da[4] == time):
+                    # 上架
+                    sql = "UPDATE `ba_jz_project` SET `status`='3' WHERE (`id`="+str(
+                        da[0])+")"
+                    rsale = rsale+int(da[2])
+                    mycursor.execute(sql)
+                    shelves = shelves+1
+                elif (da[4] == ztime):
+                    # 下架
+                    sql = "UPDATE `ba_jz_project` SET `status`='4' WHERE (`id`="+str(
+                        da[0])+")"
+                    mycursor.execute(sql)
+                    tshelves = tshelves+1
+    print(rsale)
+    print(rtsale)
+    print(rprice)
+    print(tprice)
+    print(shelves)
+    print(tshelves)
+    print(con)
+    # print(type(rsale))
+    # print(type(rtsale))
+    # print(type(rprice))
+    # print(type(tprice))
+    # print(type(shelves))
+    # print(type(tshelves))
+    # exit(0)
+    sql = "SELECT id FROM ba_jz_contend WHERE time =  '" + \
+        str(time)+"' and pid = '"+str(id)+"'"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     if myresult:
-        print("已存在")
+        print("已存在contend")
     else:
-        print("不存在")
-        sql = "insert into ba_jz_contend (pid, sale,sales,time,city,rprice,tprice,shelves,tshelves,con) values ('"+str(id)+"','"+str(rsale)+"','"+str(cs)+"','"+str(time)+"','"+city+"','" +str(rprice)+"','"+str(tprice)+"','"+str(shelves)+"','"+str(tshelves)+"','"+str(con)+"')"
-        mycursor.execute(sql)
+        print("不存在contend")
+        if con != 0:  # 判断是否获取到数据
+            sql = "insert into ba_jz_contend (pid, sale,sales,time,city,rprice,tprice,shelves,tshelves,con) values ('"+str(id)+"','"+str(rsale)+"','"+str(
+                cs)+"','"+str(time)+"','"+city+"','" + str(rprice)+"','"+str(tprice)+"','"+str(shelves)+"','"+str(tshelves)+"','"+str(con)+"')"
+            mycursor.execute(sql)
+        # else:#如果没有获取到数据 延时一段时间后再次爬取
+        #     print('延时执行')
+            # import time
+            # # 睡眠时间
+            # def sleeptime(s):
+            #     # 时间间隔time秒
+            #     print("休息",end="")
+            #     for i in range(s):
+            #         time.sleep(1)
+            #         print("第"+str(i+1)+"秒 ",end="")
+            # sleeptime(300)
+            # time = int(time.mktime(date_array))#今天(命名出现bug 重新获取时间)
     mydb.commit()

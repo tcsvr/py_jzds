@@ -10,15 +10,21 @@ import json
 import mysql.connector
 
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="root",
-  passwd="root",
-  database="is_shenzhen90_com"
-)
+# mydb = mysql.connector.connect(
+#   host="localhost",
+#   user="root",
+#   passwd="root",
+#   database="is_shenzhen90_com"
+# )
 #评论系统
 
-
+mydb = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    passwd="root",
+    database="is_shenzhen90_com"
+    # database="is_sz"
+)
 mycursor = mydb.cursor()
 
 # f =open('6.csv', 'w', newline='')
